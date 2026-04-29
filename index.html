@@ -1392,8 +1392,34 @@
         return code + '\n';
     }
 
+    function addNavigationScript(code) {
+        const navigationScript = [
+            '    <!-- SCRIPT NAVIGASI: membuat menu navbar dan tombol hero mengarah ke bagian halaman yang sesuai. -->',
+            '    <scr' + 'ipt>',
+            '        document.querySelectorAll(\'a[href^="#"]\').forEach(function(link) {',
+            '            link.addEventListener(\'click\', function(event) {',
+            '                const targetId = link.getAttribute(\'href\');',
+            '                if (!targetId || targetId === \'#\') return;',
+            '                const targetElement = document.querySelector(targetId);',
+            '                if (!targetElement) return;',
+            '                event.preventDefault();',
+            '                const navbar = document.querySelector(\'nav\');',
+            '                const navbarHeight = navbar ? navbar.offsetHeight : 0;',
+            '                const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - navbarHeight - 10;',
+            '                window.scrollTo({',
+            '                    top: Math.max(targetPosition, 0),',
+            '                    behavior: \'smooth\'',
+            '                });',
+            '            });',
+            '        });',
+            '    </scr' + 'ipt>'
+        ].join('\n');
+
+        return code.replace('\n</body>', '\n' + navigationScript + '\n</body>');
+    }
+
     function getStudentCode(tpl) {
-        return addStudentGuideComments(tpl.code);
+        return addNavigationScript(addStudentGuideComments(tpl.code));
     }
 
     function showToast(message) {
