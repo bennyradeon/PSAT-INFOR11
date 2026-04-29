@@ -1290,6 +1290,112 @@
             .replace(/(^-|-$)/g, '') || 'template';
     }
 
+
+    function formatHtmlForCopy(html) {
+        const voidTags = /^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i;
+        const normalized = html
+            .replace(/\r\n/g, '\n')
+            .replace(/>\s*</g, '>\n<')
+            .trim();
+
+        const lines = normalized.split('\n');
+        const formatted = [];
+        let indent = 0;
+        let inStyle = false;
+        let inScript = false;
+
+        lines.forEach(function(rawLine) {
+            const trimmed = rawLine.trim();
+            if (!trimmed) return;
+
+            if (/^<\/style>/i.test(trimmed)) {
+                inStyle = false;
+                indent = Math.max(indent - 1, 0);
+                formatted.push('    '.repeat(indent) + trimmed);
+                return;
+            }
+
+            if (/^<\/script>/i.test(trimmed)) {
+                inScript = false;
+                indent = Math.max(indent - 1, 0);
+                formatted.push('    '.repeat(indent) + trimmed);
+                return;
+            }
+
+            if (inStyle || inScript) {
+                formatted.push(rawLine);
+                return;
+            }
+
+            const closingTag = /^<\/[a-zA-Z]/.test(trimmed);
+            const tagMatch = trimmed.match(/^<([a-zA-Z][\w-]*)\b[^>]*>$/);
+            const tagName = tagMatch ? tagMatch[1] : '';
+            const sameLinePair = new RegExp('^<' + tagName + '\\b[^>]*>.*<\\/' + tagName + '>$', 'i').test(trimmed);
+            const commentOrDoctype = /^<!(DOCTYPE|--)/i.test(trimmed);
+            const selfClosing = /\/>$/.test(trimmed) || voidTags.test(tagName);
+            const openingTag = Boolean(tagMatch) && !closingTag && !sameLinePair && !commentOrDoctype && !selfClosing;
+
+            if (closingTag) {
+                indent = Math.max(indent - 1, 0);
+            }
+
+            formatted.push('    '.repeat(indent) + trimmed);
+
+            if (openingTag) {
+                if (/^<style\b/i.test(trimmed)) inStyle = true;
+                if (/^<script\b/i.test(trimmed)) inScript = true;
+                indent += 1;
+            }
+        });
+
+        return formatted.join('\n') + '\n';
+    }
+
+
+    function addStudentGuideComments(html) {
+        let code = formatHtmlForCopy(html).trim();
+
+        code = code
+            .replace('<html lang="id">', '<html lang="id">\n    <!-- TAG HTML: pembungkus seluruh dokumen website. Atribut lang="id" menandakan bahasa Indonesia. -->')
+            .replace('<head>', '<head>\n    <!-- TAG HEAD: berisi informasi halaman, judul tab browser, dan CSS. Bagian ini tidak tampil langsung di halaman. -->')
+            .replace('    <meta charset="UTF-8">', '    <!-- META CHARSET: mengatur agar huruf dan simbol dapat terbaca dengan benar. -->\n    <meta charset="UTF-8">')
+            .replace('    <meta name="viewport" content="width=device-width, initial-scale=1.0">', '    <!-- META VIEWPORT: membuat tampilan website menyesuaikan ukuran layar HP/laptop. -->\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">')
+            .replace('    <title>', '    <!-- TAG TITLE: teks yang muncul di tab browser. Ganti sesuai judul website. -->\n    <title>')
+            .replace('    <style>', '    <!-- TAG STYLE: tempat menulis CSS internal untuk mengatur tampilan website. -->\n    <style>')
+            .replace('        :root {', '        /* :root: tempat menyimpan variabel warna agar mudah diganti. */\n        :root {')
+            .replace('        * {', '        /* RESET: menghilangkan margin/padding bawaan browser. */\n        * {')
+            .replace('        body {', '        /* BODY: mengatur font, warna latar, warna teks, dan jarak baca seluruh halaman. */\n        body {')
+            .replace('        nav {', '        /* NAVBAR: mengatur tampilan menu navigasi bagian atas. */\n        nav {')
+            .replace('        header {', '        /* HEADER/HERO: mengatur bagian pembuka website yang berisi judul besar, deskripsi, tombol, dan gambar. */\n        header {')
+            .replace('        .card-container {', '        /* CARD CONTAINER: mengatur susunan kumpulan card/kartu konten. */\n        .card-container {')
+            .replace('        .card {', '        /* CARD: mengatur tampilan satu kotak konten seperti berita, menu, produk, atau proyek. */\n        .card {')
+            .replace('        .about {', '        /* ABOUT: mengatur bagian tentang website. */\n        .about {')
+            .replace('        .contact {', '        /* CONTACT: mengatur bagian kontak. */\n        .contact {')
+            .replace('        footer {', '        /* FOOTER: mengatur bagian paling bawah website. */\n        footer {')
+            .replace('        @media (max-width: 900px)', '        /* MEDIA QUERY TABLET: mengubah layout agar rapi di layar sedang. */\n        @media (max-width: 900px)')
+            .replace('        @media (max-width: 600px)', '        /* MEDIA QUERY HP: mengubah layout agar rapi di layar kecil. */\n        @media (max-width: 600px)')
+            .replace('<body>', '<body>\n    <!-- TAG BODY: semua elemen yang terlihat oleh pengunjung ditulis di dalam bagian ini. -->')
+            .replace('    <nav>', '    <!-- TAG NAV: menu navigasi utama. Ganti logo dan daftar menu sesuai tema website. -->\n    <nav>')
+            .replace('        <div class="logo">', '        <!-- DIV LOGO: nama/identitas website. -->\n        <div class="logo">')
+            .replace('        <ul class="menu">', '        <!-- UL MENU: daftar menu navigasi. Setiap menu dibuat dengan tag li dan a. -->\n        <ul class="menu">')
+            .replace('    <header id="beranda">', '    <!-- TAG HEADER: bagian pembuka/hero website. Biasanya berisi judul utama, deskripsi, tombol, dan gambar. -->\n    <header id="beranda">')
+            .replace('        <div class="hero-text">', '        <!-- DIV HERO-TEXT: area teks pembuka website. -->\n        <div class="hero-text">')
+            .replace('        <div class="hero-image">', '        <!-- DIV HERO-IMAGE: area gambar utama website. Ganti src gambar sesuai kebutuhan. -->\n        <div class="hero-image">')
+            .replace('    <main>', '    <!-- TAG MAIN: bagian utama halaman. Isi konten inti website diletakkan di sini. -->\n    <main>')
+            .replace('        <section class="section-title" id="konten">', '        <!-- TAG SECTION: kelompok konten dengan topik tertentu. Section ini menjadi judul konten utama. -->\n        <section class="section-title" id="konten">')
+            .replace('        <section class="card-container">', '        <!-- SECTION CARD-CONTAINER: tempat menyusun beberapa artikel/card. -->\n        <section class="card-container">')
+            .replace(/\n            <article class="card">/g, '\n            <!-- TAG ARTICLE: satu item konten. Ganti gambar, judul, deskripsi, dan link sesuai tema. -->\n            <article class="card">')
+            .replace('        <section class="about" id="tentang">', '        <!-- SECTION ABOUT: bagian penjelasan singkat tentang website. -->\n        <section class="about" id="tentang">')
+            .replace('        <section class="contact" id="kontak">', '        <!-- SECTION CONTACT: bagian informasi kontak atau identitas pembuat website. -->\n        <section class="contact" id="kontak">')
+            .replace('    <footer>', '    <!-- TAG FOOTER: bagian penutup halaman. Biasanya berisi nama pembuat, kelas, atau copyright. -->\n    <footer>');
+
+        return code + '\n';
+    }
+
+    function getStudentCode(tpl) {
+        return addStudentGuideComments(tpl.code);
+    }
+
     function showToast(message) {
         const toast = document.createElement('div');
         toast.textContent = message;
@@ -1311,7 +1417,7 @@
     function copyText(text) {
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text)
-                .then(() => showToast('Source code berhasil disalin.'))
+                .then(() => showToast('Source code berhasil disalin dengan rapi.'))
                 .catch(() => fallbackCopy(text));
         } else {
             fallbackCopy(text);
@@ -1328,7 +1434,7 @@
         area.select();
         try {
             document.execCommand('copy');
-            showToast('Source code berhasil disalin.');
+            showToast('Source code berhasil disalin dengan rapi.');
         } catch (error) {
             showToast('Gagal menyalin. Silakan copy manual.');
         }
@@ -1336,7 +1442,7 @@
     }
 
     function downloadHtml(tpl) {
-        const blob = new Blob([tpl.code], { type: 'text/html;charset=utf-8' });
+        const blob = new Blob([getStudentCode(tpl)], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -1387,8 +1493,8 @@
     function openModal(tpl, showSource) {
         activeTemplate = tpl;
         modalTitle.textContent = tpl.name;
-        iframe.srcdoc = tpl.code;
-        sourceView.textContent = tpl.code;
+        iframe.srcdoc = getStudentCode(tpl);
+        sourceView.textContent = getStudentCode(tpl);
         sourceVisible = Boolean(showSource);
         updateModalMode();
 
@@ -1444,7 +1550,7 @@
     });
 
     copyModalBtn.addEventListener('click', function() {
-        if (activeTemplate) copyText(activeTemplate.code);
+        if (activeTemplate) copyText(getStudentCode(activeTemplate));
     });
 
     downloadModalBtn.addEventListener('click', function() {
